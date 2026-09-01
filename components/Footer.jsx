@@ -7,7 +7,7 @@ export default function Footer() {
           <p>
             A crowdsourced price verification platform for local consumers. Compare
             observed prices with community medians and mock DTI SRP test values.
-            No account is required.
+            No account is required.()
           </p>
         </section>
         <section>
@@ -15,8 +15,12 @@ export default function Footer() {
           <p>
             Email:{" "}
             <a href="mailto:aces.priceter@gmail.com">aces.priceter@gmail.com</a>
+
           </p>
-          <p>ACES Tagum College · SE101 Software Engineering</p>
+          <p>Igagamao : Nothing is impossible if you believe its achievable</p>
+          <p>Ampong: matog ta oi hahahahaha</p>
+          <p>Cervantes: kape sa te</p>
+          <p>Lobo: bawal na dong </p>
         </section>
         <section>
           <h2>Group members</h2>
@@ -25,7 +29,6 @@ export default function Footer() {
             <li>Cervantes, Khegie N.</li>
             <li>Igagamao, Joriel Anne C.</li>
             <li>Lobo, Jellian Jade I.</li>
-            <li>Pareja, Tyrone Ken P.</li>
           </ul>
         </section>
       </div>

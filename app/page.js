@@ -9,7 +9,7 @@ export default function LandingPage() {
           <p className="eyebrow">Crowdsourced price verification</p>
           <h1>Know if a price is fair before you buy.</h1>
           <p className="lead">
-            PRICETER helps consumers in Tagum City and nearby communities compare
+            PRICETER helps consumers and nearby communities compare
             observed local prices with community medians and DTI Suggested Retail
             Prices. No account is required.
           </p>
