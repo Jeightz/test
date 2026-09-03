@@ -6,6 +6,9 @@ import {
   countTodayActions,
 } from "../../../lib/limits";
 import cloudinary from "../../../lib/cloudinary";
+import { getImageEmbedding, embeddingToVectorLiteral } from "../../../lib/embedding";
+
+export const maxDuration = 30;
 
 function parseNumber(value) {
   if (value == null || value === "") {
@@ -60,7 +63,7 @@ function uploadToCloudinary(buffer, { timeoutMs = 15000 } = {}) {
       {
         folder: "priceter/reports",
         resource_type: "image",
-        timeout: timeoutMs, // cloudinary's own internal timeout too
+        timeout: timeoutMs,
       },
       (error, result) => {
         if (settled) return;
@@ -115,7 +118,6 @@ async function uploadWithRetry(buffer, retries = 2) {
         err.code || err.message
       );
 
-      // Only retry on transient network errors, not on things like bad file type
       const retryable = ["ETIMEDOUT", "UPLOAD_TIMEOUT", "ECONNRESET", "STREAM_ERROR"];
       const isRetryable =
         retryable.includes(err.code) ||
@@ -125,7 +127,6 @@ async function uploadWithRetry(buffer, retries = 2) {
         break;
       }
 
-      // small backoff before retrying
       await new Promise((r) => setTimeout(r, 500 * attempt));
     }
   }
@@ -210,11 +211,13 @@ export async function POST(request) {
       );
     }
 
+    const buffer = Buffer.from(await photo.arrayBuffer());
+
     // --- Cloudinary upload, isolated error handling ---
     let photoUrl;
+    let uploadResult;
     try {
-      const buffer = Buffer.from(await photo.arrayBuffer());
-      const uploadResult = await uploadWithRetry(buffer, 2);
+      uploadResult = await uploadWithRetry(buffer, 2);
       photoUrl = uploadResult.secure_url;
       console.log("✅ Cloudinary upload successful:", photoUrl);
     } catch (uploadError) {
@@ -224,8 +227,21 @@ export async function POST(request) {
           error:
             "We couldn't upload your photo right now (connection to the image server timed out). Please check your internet connection and try again.",
         },
-        { status: 502 } // Bad Gateway: upstream (Cloudinary) failure
+        { status: 502 }
       );
+    }
+
+    // --- Embedding generation, isolated error handling (non-fatal) ---
+    let embedding = null;
+    try {
+      embedding = await getImageEmbedding(buffer);
+      console.log("✅ Embedding generated:", embedding.length, "dims");
+    } catch (embedError) {
+      console.error(
+        "⚠️ Embedding generation failed (report will still save, search-by-image won't match this one):",
+        embedError.message
+      );
+      // Non-fatal — we still want the report saved even if embedding fails
     }
 
     // --- Database transaction, isolated error handling ---
@@ -280,8 +296,8 @@ export async function POST(request) {
 
       const report = await client.query(
         `INSERT INTO report
-          (address_id, session_id, product_id, price, photo_url)
-         VALUES ($1, $2, $3, $4, $5)
+          (address_id, session_id, product_id, price, photo_url, image_embedding)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING report_id, product_id`,
         [
           address.rows[0].address_id,
@@ -289,6 +305,7 @@ export async function POST(request) {
           product.rows[0].product_id,
           price,
           photoUrl,
+          embedding ? embeddingToVectorLiteral(embedding) : null,
         ]
       );
 
@@ -322,10 +339,6 @@ export async function POST(request) {
       }
 
       console.error("❌ Database error:", dbError);
-
-      // Note: photo was already uploaded to Cloudinary at this point but the
-      // DB row wasn't saved. Consider cleaning up the orphaned image here,
-      // e.g. cloudinary.uploader.destroy(uploadResult.public_id).
 
       return NextResponse.json(
         {

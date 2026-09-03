@@ -56,6 +56,12 @@ export async function GET(request, { params }) {
               COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 3)::int AS rating_3,
               COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 4)::int AS rating_4,
               COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 5)::int AS rating_5,
+              COALESCE(
+                json_agg(
+                  json_build_object('rating', t.rating, 'comment', t.description)
+                ) FILTER (WHERE t.trust_id IS NOT NULL),
+                '[]'
+              ) AS trust_comments,
               EXISTS (
                 SELECT 1 FROM trust_rating x
                 WHERE x.report_id = r.report_id AND x.session_id = $2
@@ -116,7 +122,13 @@ export async function GET(request, { params }) {
               COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 2)::int AS rating_2,
               COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 3)::int AS rating_3,
               COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 4)::int AS rating_4,
-              COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 5)::int AS rating_5
+              COUNT(t.trust_id) FILTER (WHERE ROUND(t.rating) = 5)::int AS rating_5,
+              COALESCE(
+                json_agg(
+                  json_build_object('rating', t.rating, 'comment', t.description)
+                ),
+                '[]'
+              ) AS trust_comments
        FROM trust_rating t
        JOIN report r ON r.report_id = t.report_id
        WHERE r.product_id = $1`,
@@ -130,6 +142,7 @@ export async function GET(request, { params }) {
       price_indicator: classifyPrice(row.price, srpPrice, localMedian),
       distribution: distributionFromCounts(row),
       rated_by_device: Boolean(row.rated_by_device),
+      trust_comments: row.trust_comments || [],
     }));
 
     const reportPrices = reportsWithIndicator.map((row) => row.price).filter((value) => value != null);
@@ -149,6 +162,7 @@ export async function GET(request, { params }) {
       trustScore: toNumber(trustResult.rows[0].trust_score),
       ratingCount: trustResult.rows[0].rating_count,
       trustDistribution: distributionFromCounts(trustResult.rows[0]),
+      trustComments: trustResult.rows[0].trust_comments || [],
       medians,
       priceRange,
       latestReport: reportsWithIndicator[0] || null,

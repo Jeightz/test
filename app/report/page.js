@@ -7,8 +7,8 @@ export default function ReportPage() {
         <p className="eyebrow">Anonymous report</p>
         <h1>Report a product price</h1>
         <p>
-          Submit a live camera photo with automatically detected location. No login
-          is required.
+          Upload an image or use your live camera to submit a price report with
+          automatically detected location. No login is required.
         </p>
       </header>
       <ReportForm />

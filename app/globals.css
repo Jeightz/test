@@ -90,6 +90,39 @@ button {
   border: 0;
 }
 
+/* Real button styling for the upload label (previously fell back to the bare `label` rule) */
+.upload-button {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--input-bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.upload-button:hover,
+.camera-secondary:hover {
+  background: var(--sage-soft);
+}
+
+/* Visible press feedback for every button-like control */
+button,
+.camera-secondary,
+.upload-button {
+  transition: transform 0.1s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:active,
+.camera-secondary:active,
+.upload-button:active {
+  transform: scale(0.95);
+  box-shadow: none;
+}
+
 .nav {
   display: flex;
   justify-content: space-between;
@@ -630,6 +663,36 @@ html[data-theme="dark"] .trust-level-low {
   border: 0;
 }
 
+.trust-comments {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.trust-comment {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.trust-comment:last-child {
+  border-bottom: 0;
+}
+
+.trust-comment-stars {
+  display: block;
+  color: #d4a017;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+}
+
+.trust-comment-text {
+  margin: 0;
+  color: var(--ink);
+  font-style: italic;
+  line-height: 1.5;
+}
+
 .rating-choices {
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -671,6 +734,73 @@ label {
   object-fit: cover;
   background: #111;
   border-radius: 16px;
+}
+
+.camera-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.camera-options button,
+.camera-actions button {
+  width: 100%;
+}
+
+.camera-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.camera-actions button {
+  flex: 1;
+  min-width: 140px;
+}
+
+.camera-actions .camera-secondary {
+  background: var(--input-bg);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.camera-file-input {
+  display: none;
+}
+
+.camera-error {
+  color: var(--over);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.search-bar-camera {
+  align-items: stretch;
+}
+
+.search-mode-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-mode-label {
+  font-weight: 700;
+  color: var(--sage);
+}
+
+.camera-search-captured {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.camera-search-captured .search-bar {
+  margin-bottom: 0;
 }
 
 .row {
@@ -744,7 +874,8 @@ label {
   .stat-row,
   .product-detail-top,
   .row,
-  .footer-grid {
+  .footer-grid,
+  .camera-options {
     grid-template-columns: 1fr;
   }
 

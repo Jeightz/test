@@ -190,7 +190,10 @@ export default function ReportForm() {
     formData.set("country", location.country);
     formData.set("latitude", String(location.latitude));
     formData.set("longitude", String(location.longitude));
-    formData.set("photo", photo, "capture.jpg");
+
+    // Use the original filename for uploaded files; camera captures use "capture.jpg"
+    const photoName = photo instanceof File ? photo.name : "capture.jpg";
+    formData.set("photo", photo, photoName);
 
     const response = await fetch("/api/reports", {
       method: "POST",

@@ -4,11 +4,18 @@ import { useState } from "react";
 import { RATING_CHOICES, emptyDistribution, trustLevel } from "../lib/trust";
 import { trustPercent } from "../lib/productImages";
 
-export function TrustSummary({ score, ratingCount, distribution }) {
+function starDisplay(value) {
+  const rounded = Math.round(Number(value) || 0);
+  const full = Math.max(0, Math.min(5, rounded));
+  return "★".repeat(full) + "☆".repeat(5 - full);
+}
+
+export function TrustSummary({ score, ratingCount, distribution, comments }) {
   const counts = distribution || emptyDistribution();
   const total = Number(ratingCount || 0);
   const level = trustLevel(score, total);
   const percent = total ? trustPercent(score) : 0;
+  const commentList = Array.isArray(comments) ? comments : [];
 
   return (
     <div className="trust-summary">
@@ -37,6 +44,22 @@ export function TrustSummary({ score, ratingCount, distribution }) {
       ) : (
         <p>No consistency ratings have been given yet.</p>
       )}
+      {commentList.length ? (
+        <ul className="trust-comments">
+          {commentList.map((item, index) => {
+            const comment = item?.comment || item?.description || item?.review || "";
+            if (!comment) {
+              return null;
+            }
+            return (
+              <li key={index} className="trust-comment">
+                <span className="trust-comment-stars">{starDisplay(item?.rating)}</span>
+                <p className="trust-comment-text">"{comment}"</p>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
     </div>
   );
 }
@@ -45,6 +68,7 @@ export default function TrustScore({
   score,
   ratingCount,
   distribution,
+  comments,
   reportId,
   alreadyRated,
   onRated,
@@ -111,7 +135,12 @@ export default function TrustScore({
 
   return (
     <div className="trust">
-      <TrustSummary score={score} ratingCount={ratingCount} distribution={distribution} />
+      <TrustSummary
+        score={score}
+        ratingCount={ratingCount}
+        distribution={distribution}
+        comments={comments}
+      />
       {reportId && !done ? (
         <form onSubmit={handleSubmit} noValidate>
           <p>

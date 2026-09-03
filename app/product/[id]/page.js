@@ -229,6 +229,7 @@ export default function ProductPage() {
               score={data.trustScore}
               ratingCount={data.ratingCount}
               distribution={data.trustDistribution}
+              comments={data.trustComments}
             />
           </section>
         </section>

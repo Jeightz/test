@@ -10,6 +10,7 @@ export default function SearchPage() {
   const [products, setProducts] = useState([]);
   const [message, setMessage] = useState("");
   const [coords, setCoords] = useState(null);
+  const [imageSearchActive, setImageSearchActive] = useState(false);
 
   useEffect(() => {
     fetch("/api/session");
@@ -38,6 +39,7 @@ export default function SearchPage() {
 
   async function search() {
     setMessage("");
+    setImageSearchActive(false);
     const params = new URLSearchParams({ q: query });
     if (nearby && coords) {
       params.set("nearby", "1");
@@ -52,6 +54,18 @@ export default function SearchPage() {
       return;
     }
     setProducts(data.products);
+  }
+
+  function handleImageMatch(match) {
+    setMessage("");
+    setImageSearchActive(true);
+    setProducts([match]);
+  }
+
+  function handleImageNoMatch() {
+    setMessage("");
+    setImageSearchActive(true);
+    setProducts([]);
   }
 
   useEffect(() => {
@@ -71,7 +85,10 @@ export default function SearchPage() {
       <header className="app-header">
         <p className="eyebrow">PRICETER</p>
         <h1>Search local prices</h1>
-        <p>Browse community-reported products. No account is required.</p>
+        <p>
+          Search by product name or use your live camera to capture an item. No
+          account is required.
+        </p>
       </header>
       <SearchBar
         query={query}
@@ -79,8 +96,17 @@ export default function SearchPage() {
         onSearch={search}
         nearby={nearby}
         onNearbyChange={setNearby}
+        onImageMatch={handleImageMatch}
+        onImageNoMatch={handleImageNoMatch}
       />
       {message ? <p>{message}</p> : null}
+      {imageSearchActive ? (
+        products.length > 0 ? (
+          <p className="image-search-note">Showing best match from image search.</p>
+        ) : (
+          <p className="image-search-note">No matching product found for this image.</p>
+        )
+      ) : null}
       <ProductGrid products={products} />
     </main>
   );

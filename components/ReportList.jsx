@@ -52,6 +52,7 @@ export default function ReportList({ reports, onRated }) {
               score={report.trust_score}
               ratingCount={report.rating_count}
               distribution={report.distribution}
+              comments={report.trust_comments}
               reportId={report.report_id}
               alreadyRated={report.rated_by_device}
               onRated={onRated}
