@@ -78,13 +78,21 @@ export async function GET(request, { params }) {
     const reports = reportsResult.rows;
     const srpPrice = toNumber(srpResult.rows[0]?.price);
 
+    // FIXED: Added null checks before calling .toLowerCase()
     const cityPrices = reports
-      .filter((row) => !city || row.city.toLowerCase() === city.toLowerCase())
+      .filter(
+        (row) =>
+          row.city &&
+          (!city || row.city.toLowerCase() === city.toLowerCase())
+      )
       .map((row) => row.price);
 
+    // FIXED: Added null checks for both city and barangay before calling .toLowerCase()
     const barangayPrices = reports
       .filter(
         (row) =>
+          row.city &&
+          row.barangay &&
           (!city || row.city.toLowerCase() === city.toLowerCase()) &&
           (!barangay || row.barangay.toLowerCase() === barangay.toLowerCase())
       )
