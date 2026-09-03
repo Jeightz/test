@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import CameraCapture from "./CameraCapture";
 import { geolocationErrorMessage, locationFromNominatim } from "../lib/locationFields";
 
+const MANUAL_ENTRY_VALUE = "__manual__";
+
 function missingReportFields({ productName, categoryId, price, location, photo }) {
   const missing = [];
 
@@ -55,6 +57,9 @@ export default function ReportForm() {
   const [photoUrl, setPhotoUrl] = useState("");
   const [cameraError, setCameraError] = useState("");
   const [productName, setProductName] = useState("");
+  const [products, setProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState("");
+  const [manualEntry, setManualEntry] = useState(false);
   const [categoryId, setCategoryId] = useState("");
   const [categories, setCategories] = useState([]);
   const [price, setPrice] = useState("");
@@ -134,6 +139,20 @@ export default function ReportForm() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/products")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.products) {
+          setProducts(data.products);
+        }
+      })
+      .catch(() => {
+        // Non-fatal: the person can still type a product name manually.
+        setManualEntry(true);
+      });
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (photoUrl) {
         URL.revokeObjectURL(photoUrl);
@@ -156,6 +175,27 @@ export default function ReportForm() {
     setPhoto(blob);
     setPhotoUrl(URL.createObjectURL(blob));
     setCameraError("");
+  }
+
+  function handleProductSelect(event) {
+    const value = event.target.value;
+
+    if (value === MANUAL_ENTRY_VALUE) {
+      setManualEntry(true);
+      setSelectedProductId("");
+      setProductName("");
+      return;
+    }
+
+    setSelectedProductId(value);
+    const match = products.find((product) => String(product.product_id) === value);
+    setProductName(match ? match.name : "");
+  }
+
+  function switchToProductList() {
+    setManualEntry(false);
+    setProductName("");
+    setSelectedProductId("");
   }
 
   async function handleSubmit(event) {
@@ -217,12 +257,33 @@ export default function ReportForm() {
     <form className="form" onSubmit={handleSubmit} noValidate>
       <label>
         Product name
-        <input
-          name="product_name"
-          value={productName}
-          onChange={(event) => setProductName(event.target.value)}
-          placeholder="Example: Well-milled rice (per kg)"
-        />
+        {manualEntry ? (
+          <>
+            <input
+              name="product_name"
+              value={productName}
+              onChange={(event) => setProductName(event.target.value)}
+              placeholder="Example: Well-milled rice (per kg)"
+            />
+            {products.length ? (
+              <button type="button" className="upload-button" onClick={switchToProductList}>
+                Choose from existing products instead
+              </button>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <select name="product_id" value={selectedProductId} onChange={handleProductSelect}>
+              <option value="">Select a product</option>
+              {products.map((product) => (
+                <option key={product.product_id} value={product.product_id}>
+                  {product.name}
+                </option>
+              ))}
+              <option value={MANUAL_ENTRY_VALUE}>Not listed — type it myself</option>
+            </select>
+          </>
+        )}
       </label>
       <label>
         Category
