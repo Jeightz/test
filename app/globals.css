@@ -663,6 +663,8 @@ html[data-theme="dark"] .trust-level-low {
   border: 0;
 }
 
+/* ---- Play Store–style anonymous reviews ---- */
+
 .trust-comments {
   list-style: none;
   padding: 0;
@@ -671,7 +673,10 @@ html[data-theme="dark"] .trust-level-low {
 }
 
 .trust-comment {
-  padding: 10px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 0;
   border-bottom: 1px solid var(--line);
 }
 
@@ -679,17 +684,37 @@ html[data-theme="dark"] .trust-level-low {
   border-bottom: 0;
 }
 
+.review-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--unavailable);
+}
+
+.review-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.review-header {
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
 .trust-comment-stars {
   display: block;
   color: #d4a017;
   letter-spacing: 0.08em;
   margin-bottom: 4px;
+  font-size: 0.9rem;
 }
 
 .trust-comment-text {
   margin: 0;
   color: var(--ink);
-  font-style: italic;
   line-height: 1.5;
 }
 

@@ -1,13 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { RATING_CHOICES, emptyDistribution, trustLevel } from "../lib/trust";
 import { trustPercent } from "../lib/productImages";
+import userAvatar from "../img/user.png";
 
 function starDisplay(value) {
   const rounded = Math.round(Number(value) || 0);
   const full = Math.max(0, Math.min(5, rounded));
   return "★".repeat(full) + "☆".repeat(5 - full);
+}
+
+// Lightweight local "funny name" generator — no external API needed,
+// no CORS/rate-limit issues, and re-rolls fresh on every mount/refresh.
+const FUNNY_ADJECTIVES = [
+  "Sneaky", "Wobbly", "Grumpy", "Sleepy", "Salty", "Spicy", "Fluffy",
+  "Chaotic", "Sassy", "Nervous", "Rowdy", "Cranky", "Sneezy", "Wiggly",
+  "Dizzy", "Feral", "Soggy", "Crusty", "Zesty", "Jolly",
+];
+const FUNNY_NOUNS = [
+  "Banana", "Penguin", "Waffle", "Ninja", "Potato", "Goblin", "Otter",
+  "Nugget", "Raccoon", "Wizard", "Taco", "Hamster", "Pickle", "Yeti",
+  "Noodle", "Gremlin", "Walrus", "Muffin", "Dragon", "Sloth",
+];
+
+function generateFunnyName() {
+  const adjective = FUNNY_ADJECTIVES[Math.floor(Math.random() * FUNNY_ADJECTIVES.length)];
+  const noun = FUNNY_NOUNS[Math.floor(Math.random() * FUNNY_NOUNS.length)];
+  const suffix = Math.floor(Math.random() * 90) + 10; // 10-99
+  return `${adjective} ${noun}${suffix}`;
 }
 
 export function TrustSummary({ score, ratingCount, distribution, comments }) {
@@ -16,6 +37,12 @@ export function TrustSummary({ score, ratingCount, distribution, comments }) {
   const level = trustLevel(score, total);
   const percent = total ? trustPercent(score) : 0;
   const commentList = Array.isArray(comments) ? comments : [];
+
+  // One funny name per comment, stable for this mount, fresh on next refresh.
+  const funnyNames = useMemo(
+    () => commentList.map(() => generateFunnyName()),
+    [commentList.length]
+  );
 
   return (
     <div className="trust-summary">
@@ -52,9 +79,19 @@ export function TrustSummary({ score, ratingCount, distribution, comments }) {
               return null;
             }
             return (
-              <li key={index} className="trust-comment">
-                <span className="trust-comment-stars">{starDisplay(item?.rating)}</span>
-                <p className="trust-comment-text">"{comment}"</p>
+              <li key={index} className="trust-comment play-store-review">
+                <img
+                  src={userAvatar.src ?? userAvatar}
+                  alt="Anonymous reviewer avatar"
+                  className="review-avatar"
+                />
+                <div className="review-body">
+                  <div className="review-header">
+                    <span className="review-name">{funnyNames[index]}</span>
+                  </div>
+                  <span className="trust-comment-stars">{starDisplay(item?.rating)}</span>
+                  <p className="trust-comment-text">{comment}</p>
+                </div>
               </li>
             );
           })}

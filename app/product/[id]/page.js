@@ -11,6 +11,17 @@ import ReportList from "../../../components/ReportList";
 import { geolocationErrorMessage, locationFromNominatim } from "../../../lib/locationFields";
 import { formatPeso, productImageSrc, trustPercent } from "../../../lib/productImages";
 
+function haversineDistanceKm(lat1, lon1, lat2, lon2) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const R = 6371;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export default function ProductPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -122,6 +133,16 @@ export default function ProductPage() {
   });
   const mapped = data.reports.find((row) => row.latitude && row.longitude);
   const percent = trustPercent(data.trustScore);
+  const reportedBarangay = latest?.barangay || mapped?.barangay;
+  const reportedCity = latest?.city || mapped?.city;
+  const reportedCountry = latest?.country || mapped?.country;
+  const reportedLat = latest?.latitude ?? mapped?.latitude;
+  const reportedLng = latest?.longitude ?? mapped?.longitude;
+  const hasReportedLocation = reportedBarangay || reportedCity || reportedCountry || (reportedLat && reportedLng);
+  const distanceKm =
+    coords && reportedLat && reportedLng
+      ? haversineDistanceKm(coords.lat, coords.lng, Number(reportedLat), Number(reportedLng))
+      : null;
 
   return (
     <main className="app-shell product-shell">
@@ -186,16 +207,55 @@ export default function ProductPage() {
           </section>
 
           <section className="panel">
-            <h2>Local area</h2>
-            <p>{locationStatus}</p>
-            {barangay || city ? (
+            <h2>Reported location</h2>
+            {hasReportedLocation ? (
+              <dl className="report-facts">
+                {reportedBarangay ? (
+                  <div>
+                    <dt>Barangay</dt>
+                    <dd>{reportedBarangay}</dd>
+                  </div>
+                ) : null}
+                {reportedCity ? (
+                  <div>
+                    <dt>City</dt>
+                    <dd>{reportedCity}</dd>
+                  </div>
+                ) : null}
+                {reportedCountry ? (
+                  <div>
+                    <dt>Country</dt>
+                    <dd>{reportedCountry}</dd>
+                  </div>
+                ) : null}
+                {reportedLat && reportedLng ? (
+                  <div>
+                    <dt>Coordinates</dt>
+                    <dd>
+                      {Number(reportedLat).toFixed(6)}, {Number(reportedLng).toFixed(6)}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+            ) : (
+              <p>No location was recorded with this report.</p>
+            )}
+          </section>
+
+          <section className="panel">
+            <h2>Distance from you</h2>
+            {distanceKm !== null ? (
               <p>
-                {barangay ? `Barangay: ${barangay}` : ""}
-                {barangay && city ? " · " : ""}
-                {city ? `City: ${city}` : ""}
+                <strong>
+                  {distanceKm < 1
+                    ? `${Math.round(distanceKm * 1000)} m away`
+                    : `${distanceKm.toFixed(1)} km away`}
+                </strong>
               </p>
-            ) : null}
-            <p className="muted">Local medians are filtered by barangay and city when location is available.</p>
+            ) : (
+              <p>{locationStatus}</p>
+            )}
+            <p className="muted">Local medians are filtered by your location when it's available.</p>
           </section>
 
           <LocalMedian medians={data.medians} />
