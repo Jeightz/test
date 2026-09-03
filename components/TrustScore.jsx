@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RATING_CHOICES, emptyDistribution, trustLevel } from "../lib/trust";
 import { trustPercent } from "../lib/productImages";
 import userAvatar from "../img/user.png";
@@ -31,12 +31,77 @@ function generateFunnyName() {
   return `${adjective} ${noun}${suffix}`;
 }
 
-export function TrustSummary({ score, ratingCount, distribution, comments }) {
+// Haversine formula — great-circle distance between two lat/lng points, in km
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const R = 6371; // Earth radius in km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function formatDistance(km) {
+  if (km < 1) {
+    return `${Math.round(km * 1000)} m away`;
+  }
+  return `${km.toFixed(1)} km away`;
+}
+
+function useDistanceToReport(reportLatitude, reportLongitude) {
+  const [status, setStatus] = useState("idle"); // idle | loading | ready | error
+  const [distance, setDistance] = useState(null);
+
+  useEffect(() => {
+    if (reportLatitude == null || reportLongitude == null) {
+      setStatus("idle");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setStatus("error");
+      return;
+    }
+
+    setStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const km = distanceKm(
+          position.coords.latitude,
+          position.coords.longitude,
+          reportLatitude,
+          reportLongitude
+        );
+        setDistance(km);
+        setStatus("ready");
+      },
+      () => {
+        setStatus("error");
+      },
+      { enableHighAccuracy: true, timeout: 15000 }
+    );
+  }, [reportLatitude, reportLongitude]);
+
+  return { status, distance };
+}
+
+export function TrustSummary({
+  score,
+  ratingCount,
+  distribution,
+  comments,
+  reportLatitude,
+  reportLongitude,
+}) {
   const counts = distribution || emptyDistribution();
   const total = Number(ratingCount || 0);
   const level = trustLevel(score, total);
   const percent = total ? trustPercent(score) : 0;
   const commentList = Array.isArray(comments) ? comments : [];
+  const { status: distanceStatus, distance } = useDistanceToReport(reportLatitude, reportLongitude);
 
   // One funny name per comment, stable for this mount, fresh on next refresh.
   const funnyNames = useMemo(
@@ -47,6 +112,13 @@ export function TrustSummary({ score, ratingCount, distribution, comments }) {
   return (
     <div className="trust-summary">
       <p className={`trust-level trust-level-${level.key}`}>{level.label}</p>
+      {reportLatitude != null && reportLongitude != null ? (
+        <p className="report-distance">
+          {distanceStatus === "loading" && "Checking how far this is from you..."}
+          {distanceStatus === "ready" && distance != null && `📍 ${formatDistance(distance)} from you`}
+          {distanceStatus === "error" && "Distance unavailable — enable location access to see this."}
+        </p>
+      ) : null}
       <p>
         Average consistency: <strong>{total ? Number(score).toFixed(2) : "—"} / 5</strong>
         {total ? ` (${percent}%)` : ""}
@@ -107,6 +179,8 @@ export default function TrustScore({
   distribution,
   comments,
   reportId,
+  reportLatitude,
+  reportLongitude,
   alreadyRated,
   onRated,
 }) {
@@ -177,6 +251,8 @@ export default function TrustScore({
         ratingCount={ratingCount}
         distribution={distribution}
         comments={comments}
+        reportLatitude={reportLatitude}
+        reportLongitude={reportLongitude}
       />
       {reportId && !done ? (
         <form onSubmit={handleSubmit} noValidate>

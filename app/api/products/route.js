@@ -32,7 +32,25 @@ export async function GET(request) {
                   WHERE product_id = p.product_id
                   ORDER BY effective_date DESC, srp_id DESC
                   LIMIT 1
-                ) AS srp_price
+                ) AS srp_price,
+                (
+                  SELECT a2.latitude FROM report r2
+                  JOIN address a2 ON a2.address_id = r2.address_id
+                  WHERE r2.product_id = p.product_id
+                    AND a2.latitude IS NOT NULL
+                    AND a2.longitude IS NOT NULL
+                  ORDER BY r2.date_reported DESC
+                  LIMIT 1
+                ) AS latitude,
+                (
+                  SELECT a2.longitude FROM report r2
+                  JOIN address a2 ON a2.address_id = r2.address_id
+                  WHERE r2.product_id = p.product_id
+                    AND a2.latitude IS NOT NULL
+                    AND a2.longitude IS NOT NULL
+                  ORDER BY r2.date_reported DESC
+                  LIMIT 1
+                ) AS longitude
          FROM product p
          JOIN category c ON c.category_id = p.category_id
          JOIN report r ON r.product_id = p.product_id
@@ -68,7 +86,25 @@ export async function GET(request) {
                 WHERE product_id = p.product_id
                 ORDER BY effective_date DESC, srp_id DESC
                 LIMIT 1
-              ) AS srp_price
+              ) AS srp_price,
+              (
+                SELECT a2.latitude FROM report r2
+                JOIN address a2 ON a2.address_id = r2.address_id
+                WHERE r2.product_id = p.product_id
+                  AND a2.latitude IS NOT NULL
+                  AND a2.longitude IS NOT NULL
+                ORDER BY r2.date_reported DESC
+                LIMIT 1
+              ) AS latitude,
+              (
+                SELECT a2.longitude FROM report r2
+                JOIN address a2 ON a2.address_id = r2.address_id
+                WHERE r2.product_id = p.product_id
+                  AND a2.latitude IS NOT NULL
+                  AND a2.longitude IS NOT NULL
+                ORDER BY r2.date_reported DESC
+                LIMIT 1
+              ) AS longitude
        FROM product p
        JOIN category c ON c.category_id = p.category_id
        LEFT JOIN report r ON r.product_id = p.product_id

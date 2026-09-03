@@ -22,6 +22,34 @@ function haversineDistanceKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// Picks the report that best represents a "fair" price for this product,
+// so the hero card and the report list always agree on the same report
+// (fixes the Fair/Overpriced mismatch — both now read price_indicator
+// off of this exact same report object).
+function pickFairestReport(reports, medianPrice) {
+  if (!reports || !reports.length) {
+    return null;
+  }
+
+  const fairReports = reports.filter(
+    (report) => String(report.price_indicator).toLowerCase() === "fair"
+  );
+  const pool = fairReports.length ? fairReports : reports;
+
+  if (medianPrice == null || Number.isNaN(Number(medianPrice))) {
+    // No median to compare against — fall back to most recently submitted.
+    return pool.reduce((newest, report) =>
+      new Date(report.date_reported) > new Date(newest.date_reported) ? report : newest
+    );
+  }
+
+  return pool.reduce((best, report) => {
+    const bestDiff = Math.abs(Number(best.price) - Number(medianPrice));
+    const reportDiff = Math.abs(Number(report.price) - Number(medianPrice));
+    return reportDiff < bestDiff ? report : best;
+  });
+}
+
 export default function ProductPage() {
   const params = useParams();
   const searchParams = useSearchParams();
@@ -125,19 +153,20 @@ export default function ProductPage() {
     );
   }
 
-  const latest = data.latestReport;
-  const displayPrice = latest?.price ?? data.srp?.price;
+  const medianPrice = data.medians.nearby ?? data.medians.barangay ?? data.medians.city;
+  const fairest = pickFairestReport(data.reports, medianPrice);
+  const displayPrice = fairest?.price ?? data.srp?.price;
   const heroImage = productImageSrc({
     product_id: data.product.product_id,
-    photo_url: latest?.photo_url,
+    photo_url: fairest?.photo_url,
   });
   const mapped = data.reports.find((row) => row.latitude && row.longitude);
   const percent = trustPercent(data.trustScore);
-  const reportedBarangay = latest?.barangay || mapped?.barangay;
-  const reportedCity = latest?.city || mapped?.city;
-  const reportedCountry = latest?.country || mapped?.country;
-  const reportedLat = latest?.latitude ?? mapped?.latitude;
-  const reportedLng = latest?.longitude ?? mapped?.longitude;
+  const reportedBarangay = fairest?.barangay || mapped?.barangay;
+  const reportedCity = fairest?.city || mapped?.city;
+  const reportedCountry = fairest?.country || mapped?.country;
+  const reportedLat = fairest?.latitude ?? mapped?.latitude;
+  const reportedLng = fairest?.longitude ?? mapped?.longitude;
   const hasReportedLocation = reportedBarangay || reportedCity || reportedCountry || (reportedLat && reportedLng);
   const distanceKm =
     coords && reportedLat && reportedLng
@@ -165,7 +194,7 @@ export default function ProductPage() {
               <h1>{data.product.name}</h1>
               <p className="product-price-row">
                 <strong>{formatPeso(displayPrice) || "No price yet"}</strong>
-                <PriceIndicator value={data.priceIndicator} />
+                <PriceIndicator value={fairest?.price_indicator ?? data.priceIndicator} />
               </p>
             </div>
             <Link href="/report" className="button-secondary">
@@ -263,7 +292,7 @@ export default function ProductPage() {
           <section className="panel">
             <h2>Fair / High / Overpriced indicator</h2>
             <p>Flagged from the difference between the reported price, DTI SRP, and local median.</p>
-            <PriceScale value={data.priceIndicator} />
+            <PriceScale value={fairest?.price_indicator ?? data.priceIndicator} />
           </section>
 
           <section className="panel">
@@ -297,7 +326,7 @@ export default function ProductPage() {
 
       <section className="reports-wrap">
         <h2>Reported prices</h2>
-        <ReportList reports={data.reports} onRated={loadProduct} />
+        <ReportList reports={data.reports} onRated={loadProduct} coords={coords} />
       </section>
     </main>
   );

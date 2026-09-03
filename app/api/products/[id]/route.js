@@ -113,7 +113,6 @@ export async function GET(request, { params }) {
     };
 
     const localMedian = medians.nearby ?? medians.barangay ?? medians.city;
-    const productIndicator = classifyPrice(localMedian, srpPrice, localMedian);
 
     const trustResult = await query(
       `SELECT COALESCE(AVG(t.rating), 0) AS trust_score,
@@ -150,6 +149,19 @@ export async function GET(request, { params }) {
       ? { min: Math.min(...reportPrices), max: Math.max(...reportPrices) }
       : null;
 
+    // Pick the report closest to the local median (i.e. the "fairest" one) to
+    // represent this product's overall indicator — matches the report the
+    // frontend shows as the hero, so the two badges can never disagree.
+    const fairReports = reportsWithIndicator.filter((row) => row.price_indicator === "fair");
+    const fairestPool = fairReports.length ? fairReports : reportsWithIndicator;
+    const fairestReport =
+      localMedian != null && fairestPool.length
+        ? fairestPool.reduce((best, row) =>
+            Math.abs(row.price - localMedian) < Math.abs(best.price - localMedian) ? row : best
+          )
+        : reportsWithIndicator[0] || null;
+    const productIndicator = fairestReport?.price_indicator ?? null;
+
     return NextResponse.json({
       product: productResult.rows[0],
       srp: srpResult.rows[0]
@@ -165,7 +177,7 @@ export async function GET(request, { params }) {
       trustComments: trustResult.rows[0].trust_comments || [],
       medians,
       priceRange,
-      latestReport: reportsWithIndicator[0] || null,
+      latestReport: fairestReport,
       reports: reportsWithIndicator,
     });
   } catch (error) {
