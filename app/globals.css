@@ -342,6 +342,10 @@ button {
   margin-top: 8px;
 }
 
+.product-card-body {
+  padding: 16px 18px 18px;
+}
+
 .product-card-reports {
   margin: 8px 0 0;
   font-size: 0.9rem;

@@ -5,11 +5,15 @@ import { useRouter } from "next/navigation";
 import CameraCapture from "./CameraCapture";
 import { geolocationErrorMessage, locationFromNominatim } from "../lib/locationFields";
 
-function missingReportFields({ productName, price, location, photo }) {
+function missingReportFields({ productName, categoryId, price, location, photo }) {
   const missing = [];
 
   if (!productName) {
     missing.push("product name");
+  }
+
+  if (!categoryId) {
+    missing.push("category");
   }
 
   if (price == null || Number.isNaN(price) || price <= 0) {
@@ -51,6 +55,8 @@ export default function ReportForm() {
   const [photoUrl, setPhotoUrl] = useState("");
   const [cameraError, setCameraError] = useState("");
   const [productName, setProductName] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState([]);
   const [price, setPrice] = useState("");
 
   async function detectLocation() {
@@ -114,6 +120,20 @@ export default function ReportForm() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/categories")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.categories) {
+          setCategories(data.categories);
+        }
+      })
+      .catch(() => {
+        setMessageType("error");
+        setMessage("Could not load categories. Please try again.");
+      });
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (photoUrl) {
         URL.revokeObjectURL(photoUrl);
@@ -146,6 +166,7 @@ export default function ReportForm() {
     const parsedPrice = Number(price);
     const missing = missingReportFields({
       productName: productName.trim(),
+      categoryId,
       price: parsedPrice,
       location,
       photo,
@@ -161,6 +182,7 @@ export default function ReportForm() {
 
     const formData = new FormData();
     formData.set("product_name", productName.trim());
+    formData.set("category_id", String(categoryId));
     formData.set("price", String(parsedPrice));
     formData.set("barangay", location.barangay);
     formData.set("city", location.city);
@@ -198,6 +220,21 @@ export default function ReportForm() {
           onChange={(event) => setProductName(event.target.value)}
           placeholder="Example: Well-milled rice (per kg)"
         />
+      </label>
+      <label>
+        Category
+        <select
+          name="category_id"
+          value={categoryId}
+          onChange={(event) => setCategoryId(event.target.value)}
+        >
+          <option value="">Select Category</option>
+          {categories.map((category) => (
+            <option key={category.category_id} value={category.category_id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
       </label>
       <label>
         Price
