@@ -78,27 +78,44 @@ export async function GET(request, { params }) {
     const reports = reportsResult.rows;
     const srpPrice = toNumber(srpResult.rows[0]?.price);
 
+    // Fairness must be judged against the SRP (not the local median itself —
+    // that would be circular: the median can't be "only fair prices" if fair
+    // is defined by that same median). classifyPrice already prefers srpPrice
+    // over the median reference, so passing null here isolates that check.
+    const isFairReport = (row) => classifyPrice(row.price, srpPrice, null) === "Fair";
+
+    // When there's no SRP at all, there's no independent reference to judge
+    // fairness by — bootstrap one: take the raw (unfiltered) median of the
+    // group as a rough reference, classify each report against that, then
+    // recompute the median from just the reports that pass. Falls back to
+    // the raw median if nothing passes (e.g. only 1-2 wildly spread reports).
+    function fairMedian(rows) {
+      const allPrices = rows.map((row) => row.price);
+      if (srpPrice != null) {
+        const filtered = rows.filter(isFairReport).map((row) => row.price);
+        return median(filtered.length ? filtered : allPrices);
+      }
+      const rawMedian = median(allPrices);
+      if (rawMedian == null) {
+        return null;
+      }
+      const filtered = rows
+        .filter((row) => classifyPrice(row.price, null, rawMedian) === "Fair")
+        .map((row) => row.price);
+      return median(filtered.length ? filtered : allPrices);
+    }
+
     // FIXED: Added null checks before calling .toLowerCase()
-    const cityPrices = reports
-      .filter(
-        (row) =>
-          row.city &&
-          (!city || row.city.toLowerCase() === city.toLowerCase())
-      )
-      .map((row) => row.price);
+    const cityReports = reports.filter(
+      (row) => row.city && (!city || row.city.toLowerCase() === city.toLowerCase())
+    );
 
     // FIXED: Added null checks for both city and barangay before calling .toLowerCase()
-    const barangayPrices = reports
-      .filter(
-        (row) =>
-          row.city &&
-          row.barangay &&
-          (!city || row.city.toLowerCase() === city.toLowerCase()) &&
-          (!barangay || row.barangay.toLowerCase() === barangay.toLowerCase())
-      )
-      .map((row) => row.price);
+    const barangayReports = cityReports.filter(
+      (row) => row.barangay && (!barangay || row.barangay.toLowerCase() === barangay.toLowerCase())
+    );
 
-    let nearbyPrices = [];
+    let nearbyReports = [];
     if (lat && lng) {
       const distance = nearbyDistanceSql("$2", "$3");
       const nearbyResult = await query(
@@ -111,13 +128,13 @@ export async function GET(request, { params }) {
            AND ${distance} <= 5`,
         [productId, Number(lat), Number(lng)]
       );
-      nearbyPrices = nearbyResult.rows.map((row) => row.price);
+      nearbyReports = nearbyResult.rows.map((row) => ({ price: toNumber(row.price) }));
     }
 
     const medians = {
-      nearby: median(nearbyPrices),
-      barangay: median(barangayPrices),
-      city: median(cityPrices),
+      nearby: fairMedian(nearbyReports),
+      barangay: fairMedian(barangayReports),
+      city: fairMedian(cityReports),
     };
 
     const localMedian = medians.nearby ?? medians.barangay ?? medians.city;
@@ -160,7 +177,7 @@ export async function GET(request, { params }) {
     // Pick the report closest to the local median (i.e. the "fairest" one) to
     // represent this product's overall indicator — matches the report the
     // frontend shows as the hero, so the two badges can never disagree.
-    const fairReports = reportsWithIndicator.filter((row) => row.price_indicator === "fair");
+    const fairReports = reportsWithIndicator.filter((row) => row.price_indicator === "Fair");
     const fairestPool = fairReports.length ? fairReports : reportsWithIndicator;
     const fairestReport =
       localMedian != null && fairestPool.length
