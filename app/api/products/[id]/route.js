@@ -105,15 +105,25 @@ export async function GET(request, { params }) {
       return median(filtered.length ? filtered : allPrices);
     }
 
-    // FIXED: Added null checks before calling .toLowerCase()
-    const cityReports = reports.filter(
-      (row) => row.city && (!city || row.city.toLowerCase() === city.toLowerCase())
+    // FIXED: Added null checks before calling .toLowerCase(). Also fall back
+    // to the unfiltered report set if the location match is too strict (e.g.
+    // your real location doesn't match where any reports were submitted) —
+    // otherwise a near-miss silently produces zero reports, which cascades
+    // into a null median and an "Unavailable" indicator even though reports
+    // for this product clearly exist.
+    const cityMatches = reports.filter(
+      (row) =>
+        row.city &&
+        (!city || row.city.trim().toLowerCase() === city.trim().toLowerCase())
     );
+    const cityReports = cityMatches.length ? cityMatches : reports;
 
-    // FIXED: Added null checks for both city and barangay before calling .toLowerCase()
-    const barangayReports = cityReports.filter(
-      (row) => row.barangay && (!barangay || row.barangay.toLowerCase() === barangay.toLowerCase())
+    const barangayMatches = cityReports.filter(
+      (row) =>
+        row.barangay &&
+        (!barangay || row.barangay.trim().toLowerCase() === barangay.trim().toLowerCase())
     );
+    const barangayReports = barangayMatches.length ? barangayMatches : cityReports;
 
     let nearbyReports = [];
     if (lat && lng) {
